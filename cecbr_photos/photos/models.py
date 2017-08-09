@@ -1,0 +1,128 @@
+from django.db import models
+from cecbr_photos.users.models import User
+
+
+def photo_directory_path_s(instance, filename):
+    return 'season_{0}/album_{1}/small/{2}'.format(instance.album.season, instance.album.id, filename)
+
+
+def photo_directory_path_l(instance, filename):
+    return 'season_{0}/album_{1}/full/{2}'.format(instance.album.season, instance.album.id, filename)
+
+
+def training_directory_path(instance, filename):
+    return 'person_{0}/{1}'.format(instance.person.name, filename)
+
+
+class CampUser(models.Model):
+    user = models.OneToOneField(User)
+    cecbr_uname = models.CharField(max_length=128,
+                                   null=False,
+                                   verbose_name=u"CECBR User Name",
+                                   help_text=u"Please enter your CECBR User Name...")
+    cecbr_pwd = models.CharField(max_length=128,
+                                 null=False,
+                                 verbose_name=u"CECBR Password",
+                                 help_text=u"Please enter your CECBR Password...")
+
+    def __str__(self):
+        return self.user.name
+
+    class Meta:
+        verbose_name = "Camp User"
+        verbose_name_plural = "Camp Users"
+
+
+class Season(models.Model):
+    season_name = models.CharField(max_length=4, null=False, verbose_name=u'Season Name')
+
+    def season_url(self, base_url):
+        season_param = '='.join(['seasonID', self.season_name])
+        full_url = '?'.join([base_url, season_param])
+        return full_url
+
+    class Meta:
+        verbose_name = "Season"
+        verbose_name_plural = "Seasons"
+
+
+class Album(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    id = models.IntegerField(primary_key=True)
+    name = models.CharField(max_length=128, blank=False)
+    cover_url = models.URLField(blank=False)
+    count = models.IntegerField(blank=False)
+    date = models.DateField(blank=False)
+    processed = models.BooleanField(default=False)
+    analyzed = models.BooleanField(default=False)
+
+    def album_url(self, base_url):
+        season_param = '='.join(['seasonID', self.season.season_name])
+        album_param = '='.join(['albumID', str(self.id)])
+        full_url = '?'.join([base_url, '&'.join([season_param, album_param])])
+        return full_url
+
+    class Meta:
+        ordering = ['season', 'date']
+        verbose_name = 'Album'
+        verbose_name_plural = 'Albums'
+
+
+class Photo(models.Model):
+    album = models.ForeignKey(Album, on_delete=models.CASCADE)
+    id = models.IntegerField(primary_key=True)
+    small_url = models.URLField(blank=False)
+    large_url = models.URLField(blank=False)
+    small_image = models.ImageField(upload_to='photo_directory_path_s', null=True, blank=True,
+                                    verbose_name=u'Small Image')
+    large_image = models.ImageField(upload_to='photo_directory_path_l', null=True, blank=True,
+                                    verbose_name=u'Large Image')
+    json_data = models.TextField(blank=True, null=True)
+    analyzed = models.BooleanField(default=False)
+    found = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['album', 'id']
+        verbose_name = 'Photo'
+        verbose_name_plural = 'Photos'
+
+
+class Person(models.Model):
+    campuser = models.ForeignKey(CampUser, on_delete=models.CASCADE)
+    name = models.CharField(max_length=128, blank=False, null=False)
+    photos = models.ManyToManyField(Photo)
+
+    def __str__(self):
+        return self.name
+
+
+class TrainingPhoto(models.Model):
+    person = models.ForeignKey(CampUser, on_delete=models.CASCADE)
+    photo = models.ImageField(upload_to=training_directory_path, null=False, blank=False)
+    json_data = models.TextField(blank=True)
+
+
+class TrainingGroup(models.Model):
+    campuser = models.ForeignKey(CampUser, on_delete=models.CASCADE)
+    people = models.ManyToManyField(Person)
+    trained_svm = models.FilePathField('/home/trainers/svm', match='*.pkl', blank=True, null=True)
+    trained_gcc = models.FilePathField('/home/trainers/gcc', match='*.pkl', blank=True, null=True)
+    trained = models.BooleanField(default=False)
+    trained_date = models.DateTimeField(blank=True, null=True)
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None, *args, **kwargs):
+        if not self.trained:
+            self.trained_svm = None
+            self.trained_gcc = None
+            self.trained_date = None
+        super(TrainingGroup, self).save(force_insert, force_update, using, update_fields, *args, **kwargs)
+
+    def get_photos(self):
+
+        group_photos = []
+        for person in self.people:
+            for photo in person.photos:
+                group_photos.append(photo)
+
+        return group_photos

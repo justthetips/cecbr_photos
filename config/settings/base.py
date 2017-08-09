@@ -56,6 +56,7 @@ LOCAL_APPS = [
     # custom users app
     'cecbr_photos.users.apps.UsersConfig',
     # Your stuff: custom apps go here
+    'cecbr_photos.photos.apps.PhotosConfig',
 ]
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -120,7 +121,7 @@ DATABASES['default']['ATOMIC_REQUESTS'] = True
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # In a Windows environment this must be set to your system time zone.
-TIME_ZONE = 'Americas/New_York'
+TIME_ZONE = 'America/New_York'
 
 # See: https://docs.djangoproject.com/en/dev/ref/settings/#language-code
 LANGUAGE_CODE = 'en-us'
