@@ -1,13 +1,19 @@
 import os
 import time
 import logging
+import environ
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
+# Load operating system environment variables and then prepare to use them
+env = environ.Env()
 
+#CAMP BASE URLS
 LOGON_URL = "https://blueridge.campintouch.com/v2/login/login.aspx"
+SEASON_URL = "https://blueridge.campintouch.com/ui/photo/Albums"
+ALBUM_URL = "https://blueridge.campintouch.com/ui/photo/Thumbnails"
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)

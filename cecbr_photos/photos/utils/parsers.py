@@ -1,5 +1,6 @@
 import attr
 import datetime
+import datetime.date
 from .web import Page, IndexAlbumParser, unquote, FavoriteAlbumParser
 
 ALBUM_TOKEN = "\\\"SessionIDList\\\":[]}}"
@@ -42,7 +43,7 @@ class ParsedSeason(object):
     name = attr.ib()
     cover_url = attr.ib()
     count = attr.ib(convert=int)
-    al_date = attr.ib(validator=attr.validators.instanceof(date))
+    al_date = attr.ib(validator=attr.validators.instanceof(datetime.date))
 
 
 @attr.s

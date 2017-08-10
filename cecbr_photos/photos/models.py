@@ -1,5 +1,11 @@
 from django.db import models
+import django.utils.timezone
 from cecbr_photos.users.models import User
+from .utils import parsers
+from .utils import web
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def photo_directory_path_s(instance, filename):
@@ -24,6 +30,7 @@ class CampUser(models.Model):
                                  null=False,
                                  verbose_name=u"CECBR Password",
                                  help_text=u"Please enter your CECBR Password...")
+    last_album_view = models.DateTimeField(default=django.utils.timezone.now())
 
     def __str__(self):
         return self.user.name
@@ -41,6 +48,29 @@ class Season(models.Model):
         full_url = '?'.join([base_url, season_param])
         return full_url
 
+    def process_season(self, camp_user):
+        logger.info("Processing Season {}".format(self.season_name))
+        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr.pwd)
+        albums = parsers.get_season_index(logon_page, self.season_url(web.SEASON_URL))
+        for a in albums:
+            if Album.objects.exists(id=a.id):
+                logger.debug("Album {} exists, checking to see if photo count changed".format(a.name))
+                old_album = Album.ojects.get(id=a.id)
+                if old_album.count != a.count:
+                    logger.info("Album {}'s photo count changed, it went from {} to {}".format(a.name, old_album.count,
+                                                                                               a.count))
+                    old_album.count = a.count
+                    old_album.processed = False
+                    old_album.analyzed = False
+                    old_album.processed_date = None
+                    old_album.analyzed_date = None
+                    old_album.save()
+            else:
+                logger.info("Adding new album {}".format(a.name))
+                new_album = Album(season=self, id=a.id, name=a.name, cover_url=a.cover_url, count=a.count,
+                                  date=a.al_date)
+                new_album.save()
+
     class Meta:
         verbose_name = "Season"
         verbose_name_plural = "Seasons"
@@ -55,12 +85,26 @@ class Album(models.Model):
     date = models.DateField(blank=False)
     processed = models.BooleanField(default=False)
     analyzed = models.BooleanField(default=False)
+    processed_date = models.DateTimeField(blank=True)
+    analyzed_date = models.DateTimeField(blank=True)
 
     def album_url(self, base_url):
         season_param = '='.join(['seasonID', self.season.season_name])
         album_param = '='.join(['albumID', str(self.id)])
         full_url = '?'.join([base_url, '&'.join([season_param, album_param])])
         return full_url
+
+    def process_album(self, camp_user):
+        logger.info("Processing Album {} it has {} photos".format(self.name, self.count))
+        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr.pwd)
+        photos = parsers.get_album(logon_page, self.album_url(web.ALBUM_URL))
+        for p in photos:
+            if not Photo.objects.exists(id=p.id):
+                logger.debug('Photo {} is new, adding it'.format(p.id))
+                photo = Photo(album=self, id=p.id, small_url=p.small_url, large_url=p.large_url)
+                photo.save()
+        self.processed = True
+        self.processed_date = django.utils.timezone.now()
 
     class Meta:
         ordering = ['season', 'date']
