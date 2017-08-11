@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from django.conf import settings
 
 # Load operating system environment variables and then prepare to use them
 env = environ.Env()
@@ -88,7 +89,7 @@ class Page(object):
         else:
             driver = self._driver_path
 
-        self._wd = webdriver.PhantomJS(driver)
+        self._wd = webdriver.PhantomJS(executable_path=driver)
         self._initalized = True
 
     def log_in(self):

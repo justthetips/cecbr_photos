@@ -281,3 +281,5 @@ ADMIN_URL = r'^admin/'
 
 # Your common stuff: Below this line define 3rd party library settings
 # ------------------------------------------------------------------------------
+PHANTOM_EXECUTABLE = '~/phantomjs.exe'
+USE_DLIB = False

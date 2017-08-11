@@ -4,6 +4,20 @@ from cecbr_photos.users.models import User
 from .utils import parsers
 from .utils import web
 import logging
+import json
+
+import cv2
+from PIL import Image
+import requests
+from io import BytesIO
+from django.conf import settings
+import numpy as np
+
+
+import cecbr_photos.photos.utils.FaceDetector
+import cecbr_photos.photos.utils.openface
+import cecbr_photos.photos.utils.aligndlib
+import cecbr_photos.photos.utils.ImageUtils
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +44,7 @@ class CampUser(models.Model):
                                  null=False,
                                  verbose_name=u"CECBR Password",
                                  help_text=u"Please enter your CECBR Password...")
-    last_album_view = models.DateTimeField(default=django.utils.timezone.now())
+    last_album_view = models.DateTimeField(default=django.utils.timezone.now)
 
     def __str__(self):
         return self.user.name
@@ -50,10 +64,10 @@ class Season(models.Model):
 
     def process_season(self, camp_user):
         logger.info("Processing Season {}".format(self.season_name))
-        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr.pwd)
+        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr_pwd)
         albums = parsers.get_season_index(logon_page, self.season_url(web.SEASON_URL))
         for a in albums:
-            if Album.objects.exists(id=a.id):
+            if Album.objects.filter(id=a.id).exists():
                 logger.debug("Album {} exists, checking to see if photo count changed".format(a.name))
                 old_album = Album.ojects.get(id=a.id)
                 if old_album.count != a.count:
@@ -71,6 +85,14 @@ class Season(models.Model):
                                   date=a.al_date)
                 new_album.save()
 
+    def _get_album_count(self):
+        return Album.objects.filter(season=self).count()
+
+    album_count = property(_get_album_count)
+
+    def __str__(self):
+        return self.season_name
+
     class Meta:
         verbose_name = "Season"
         verbose_name_plural = "Seasons"
@@ -85,8 +107,8 @@ class Album(models.Model):
     date = models.DateField(blank=False)
     processed = models.BooleanField(default=False)
     analyzed = models.BooleanField(default=False)
-    processed_date = models.DateTimeField(blank=True)
-    analyzed_date = models.DateTimeField(blank=True)
+    processed_date = models.DateTimeField(blank=True, null=True)
+    analyzed_date = models.DateTimeField(blank=True, null=True)
 
     def album_url(self, base_url):
         season_param = '='.join(['seasonID', self.season.season_name])
@@ -96,18 +118,19 @@ class Album(models.Model):
 
     def process_album(self, camp_user):
         logger.info("Processing Album {} it has {} photos".format(self.name, self.count))
-        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr.pwd)
+        logon_page = parsers.get_logged_on_page(camp_user.cecbr_uname, camp_user.cecbr_pwd)
         photos = parsers.get_album(logon_page, self.album_url(web.ALBUM_URL))
         for p in photos:
-            if not Photo.objects.exists(id=p.id):
+            if not Photo.objects.filter(id=p.id).exists():
                 logger.debug('Photo {} is new, adding it'.format(p.id))
                 photo = Photo(album=self, id=p.id, small_url=p.small_url, large_url=p.large_url)
                 photo.save()
         self.processed = True
         self.processed_date = django.utils.timezone.now()
+        self.save()
 
     class Meta:
-        ordering = ['season', 'date']
+        ordering = ['season', '-date']
         verbose_name = 'Album'
         verbose_name_plural = 'Albums'
 
@@ -124,6 +147,26 @@ class Photo(models.Model):
     json_data = models.TextField(blank=True, null=True)
     analyzed = models.BooleanField(default=False)
     found = models.BooleanField(default=False)
+
+    def analyze_photo(self):
+        #get the image
+        response = requests.get(self.large_url)
+        img = Image.open(BytesIO(response.content))
+
+        frame = cv2.flip(np.array(img), 1)
+        detector = cecbr_photos.photos.utils.FaceDetector.FaceDetector()
+        faces = detector.detect_faces(frame,settings.USE_DLIB)
+        face_dict = {}
+        for n, face in enumerate(faces):
+            face_dict[n+1] =face.tolist()
+        self.json_data = json.dumps(face_dict)
+        self.analyzed = True
+        self.save()
+
+
+
+
+
 
     class Meta:
         ordering = ['album', 'id']
