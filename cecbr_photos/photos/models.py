@@ -13,7 +13,6 @@ from io import BytesIO
 from django.conf import settings
 import numpy as np
 
-
 import cecbr_photos.photos.utils.FaceDetector
 import cecbr_photos.photos.utils.openface
 import cecbr_photos.photos.utils.aligndlib
@@ -149,24 +148,19 @@ class Photo(models.Model):
     found = models.BooleanField(default=False)
 
     def analyze_photo(self):
-        #get the image
+        # get the image
         response = requests.get(self.large_url)
         img = Image.open(BytesIO(response.content))
 
         frame = cv2.flip(np.array(img), 1)
         detector = cecbr_photos.photos.utils.FaceDetector.FaceDetector()
-        faces = detector.detect_faces(frame,settings.USE_DLIB)
+        faces = detector.detect_faces(frame, settings.USE_DLIB)
         face_dict = {}
         for n, face in enumerate(faces):
-            face_dict[n+1] =face.tolist()
-        self.json_data = json.dumps(face_dict)
+            face_dict[n + 1] = face.tolist()
+        self.json_data = json.dumps({'faces':face_dict})
         self.analyzed = True
         self.save()
-
-
-
-
-
 
     class Meta:
         ordering = ['album', 'id']

@@ -40,12 +40,13 @@ def handle_album(modeladmin, request, queryset):
     for album in queryset:
         album.process_album(cu)
 
+
 def analyze_album(modeladmin, request, queryset):
     cu = request.user.campuser
     for album in queryset:
         photos = Photo.objects.filter(album=album)
         for photo in photos:
-            faces = photo.analyze_photo()
+            photo.analyze_photo()
 
         album.analyzed = True
         album.save()
@@ -63,4 +64,3 @@ class MyAlbumAdmin(admin.ModelAdmin):
     model = Album
     list_display = ('season', 'name', 'count', 'date', 'processed', 'analyzed')
     actions = [handle_album, analyze_album]
-
