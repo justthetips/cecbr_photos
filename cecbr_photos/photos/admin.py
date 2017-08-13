@@ -51,6 +51,11 @@ def analyze_album(modeladmin, request, queryset):
         album.analyzed = True
         album.save()
 
+def analyze_photo(modeladmin, request, queryset):
+    for photo in queryset:
+        photo.analyze_photo()
+
+
 
 @admin.register(Season)
 class MySeasonAdmin(admin.ModelAdmin):
@@ -62,5 +67,12 @@ class MySeasonAdmin(admin.ModelAdmin):
 @admin.register(Album)
 class MyAlbumAdmin(admin.ModelAdmin):
     model = Album
-    list_display = ('season', 'name', 'count', 'date', 'processed', 'analyzed')
+    list_display = ('name', 'season', 'count', 'date', 'processed', 'analyzed')
     actions = [handle_album, analyze_album]
+
+@admin.register(Photo)
+class MyPhotoAdmin(admin.ModelAdmin):
+    model = Photo
+    list_display = ('id', 'album', 'analyzed', 'found', 'analyzed_date', 'found_date', 'downloaded' )
+    actions = [analyze_photo]
+    list_filter = ('album',)

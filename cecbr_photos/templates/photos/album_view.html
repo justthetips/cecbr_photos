@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% block title %}{{ album.name }}{% endblock %}
+
+{% block content %}
+    <div class="jumbotron">
+        <div class="container">
+            <p><h1>{{ album.name }}</h1></p>
+            <p>Date {{ album.date }} Photos {{ album.count }}</p>
+        </div>
+    </div>
+
+
+    <div class="album text-muted">
+        <div class="container">
+            <div class="row">
+                {% for photo in photos %}
+                    <div class="card">
+                        <a href="{% url 'photos:photo_view' photo.id %}">
+                            <img src="{{ photo.small_url }}" alt="{{ album.name}}" class="img-thumbnail">
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+
+{% endblock content %}

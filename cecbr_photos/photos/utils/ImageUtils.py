@@ -22,39 +22,20 @@
 
 # This is a utilities script used for testing, resizing images etc
 
-import cv2
-import numpy as np
 import os
-import glob
-import dlib
-import sys
-import argparse
-import imagehash
-import json
-from PIL import Image
-import urllib
-import base64
-import pickle
-import math
-import datetime
 import threading
-import logging
-import csv
-from sklearn.decomposition import PCA
-from sklearn.grid_search import GridSearchCV
-from sklearn.manifold import TSNE
-from sklearn.svm import SVC
 import time
 
+import cv2
+import dlib
+
 start = time.time()
-from operator import itemgetter
 import numpy as np
-import cecbr_photos.photos.utils.openface
 
 np.set_printoptions(precision=2)
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
-modelDir = os.path.join(fileDir, '..', 'models')
+modelDir = os.path.join(fileDir, '..', 'facemodels')
 dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
 

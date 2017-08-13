@@ -283,3 +283,4 @@ ADMIN_URL = r'^admin/'
 # ------------------------------------------------------------------------------
 PHANTOM_EXECUTABLE = '~/phantomjs.exe'
 USE_DLIB = False
+from .logger import LOGGING

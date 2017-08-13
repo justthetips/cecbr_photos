@@ -1,24 +1,30 @@
-from PIL import Image
 import json
-import requests
 from io import BytesIO
+
+import requests
+from PIL import Image
+
 from cecbr_photos.photos.models import TrainingPhoto, Photo
 
 
 class CEImage(object):
 
 
-    def __index__(self, photo):
+    def __init__(self, photo):
         if isinstance(photo, TrainingPhoto):
-            self._url = TrainingPhoto.photo.url
+            self._photo = TrainingPhoto.objects.get(id=photo.id)
+            self._url = self._photo.photo.url
+            self._json = self._photo.json_data
         elif isinstance(photo, Photo):
-            self._url = Photo.large_url
+            self._photo = Photo.objects.get(id=photo.id)
+            self._url = self._photo.large_url
+            self._json = self._photo.json_data
         else:
             raise ValueError("Must be a training photo or Photo, not a {}".format(photo.__class__))
 
         response = requests.get(self._url)
         self._img = Image.open(BytesIO(response.content))
-        self._json = photo.json_data
+
 
     @property
     def size(self):
@@ -33,9 +39,16 @@ class CEImage(object):
     def width(self):
         return self.size[0]
 
+    @property
+    def url(self):
+        return self._url
+
     def get_boxes(self):
-        mdata = json.loads(self._json)
-        return mdata['faces']
+        if self._json is None:
+            return []
+        else:
+            mdata = json.loads(self._json)
+            return mdata['faces']
 
     def get_people_boxes(self):
         mdata = json.loads(self._json)

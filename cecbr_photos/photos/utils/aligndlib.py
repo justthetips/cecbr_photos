@@ -14,19 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import cv2
-import numpy as np
 import os
 import random
-import shutil
+
+import cv2
+import numpy as np
 
 import cecbr_photos.photos.utils.openface
 import cecbr_photos.photos.utils.openface.helper
 from cecbr_photos.photos.utils.openface.data import iterImgs
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
-modelDir = os.path.join(fileDir, '..', 'models')
+modelDir = os.path.join(fileDir, '..', 'facemodels')
 dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
 
@@ -64,9 +63,7 @@ def computeMeanMain(args):
     write(std, "{}/std.csv".format(args.modelDir))
 
     # Only import in this mode.
-    import matplotlib as mpl
     mpl.use('Agg')
-    import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots()
     ax.scatter(mean[:, 0], -mean[:, 1], color='k')

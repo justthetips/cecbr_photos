@@ -16,13 +16,13 @@
 
 import atexit
 import binascii
-from subprocess import Popen, PIPE
 import os
 import os.path
 import sys
+from subprocess import Popen, PIPE
 
-import numpy as np
 import cv2
+import numpy as np
 
 myDir = os.path.dirname(os.path.realpath(__file__))
 

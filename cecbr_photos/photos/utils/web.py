@@ -1,12 +1,11 @@
+import logging
 import os
 import time
-import logging
-import environ
 from urllib.parse import quote
 
+import environ
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from django.conf import settings
 
 # Load operating system environment variables and then prepare to use them
 env = environ.Env()

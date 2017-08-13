@@ -1,10 +1,12 @@
 from django.db import models
+from django.core.files.base import ContentFile
 import django.utils.timezone
 from cecbr_photos.users.models import User
 from .utils import parsers
 from .utils import web
 import logging
 import json
+from urllib.parse import urlparse
 
 import cv2
 from PIL import Image
@@ -68,7 +70,7 @@ class Season(models.Model):
         for a in albums:
             if Album.objects.filter(id=a.id).exists():
                 logger.debug("Album {} exists, checking to see if photo count changed".format(a.name))
-                old_album = Album.ojects.get(id=a.id)
+                old_album = Album.objects.get(id=a.id)
                 if old_album.count != a.count:
                     logger.info("Album {}'s photo count changed, it went from {} to {}".format(a.name, old_album.count,
                                                                                                a.count))
@@ -128,6 +130,9 @@ class Album(models.Model):
         self.processed_date = django.utils.timezone.now()
         self.save()
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         ordering = ['season', '-date']
         verbose_name = 'Album'
@@ -146,6 +151,9 @@ class Photo(models.Model):
     json_data = models.TextField(blank=True, null=True)
     analyzed = models.BooleanField(default=False)
     found = models.BooleanField(default=False)
+    analyzed_date = models.DateTimeField(blank=True, null=True)
+    found_date = models.DateTimeField(blank=True, null=True)
+    downloaded = models.BooleanField(default=False)
 
     def analyze_photo(self):
         # get the image
@@ -160,6 +168,18 @@ class Photo(models.Model):
             face_dict[n + 1] = face.tolist()
         self.json_data = json.dumps({'faces':face_dict})
         self.analyzed = True
+        self.analyzed_date = django.utils.timezone.now()
+        self.save()
+
+    def download_photo(self):
+        photo_small = requests.get(self.small_url)
+        name_small = 'sm-{}'.format(urlparse(self.small_url).path.split('/')[-1])
+        photo_large = requests.get(self.large_url)
+        name_large = urlparse(self.small_url).path.split('/')[-1]
+        logger.debug('Downloading {}'.format(self.large_url))
+        self.small_image.save(name_small,ContentFile(photo_small), save=True)
+        self.large_image.save(name_large,ContentFile(photo_large), save=True)
+        self.downloaded = True
         self.save()
 
     class Meta:
@@ -207,3 +227,14 @@ class TrainingGroup(models.Model):
                 group_photos.append(photo)
 
         return group_photos
+
+class Vault(models.Model):
+    user = models.ForeignKey(CampUser)
+    photo = models.ForeignKey(Photo)
+    vaulted_date = models.DateTimeField(auto_now_add=True)
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None, *args, **kwargs):
+        if not self.photo.downloaded:
+            self.photo.download_photo()
+        super(Vault, self).save(force_insert, force_update, using, update_fields, *args, **kwargs)

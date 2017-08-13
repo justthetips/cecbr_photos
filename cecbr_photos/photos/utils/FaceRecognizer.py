@@ -20,31 +20,29 @@
 # developed by Brandon Amos
 # Copyright 2015-2016 Carnegie Mellon University
 
-import cv2
-import os
-import dlib
-import argparse
-from PIL import Image
-import pickle
-import math
-import datetime
-import threading
+import atexit
 import logging
-from sklearn.svm import SVC
+import math
+import os
+import os.path
+import pickle
+import threading
 import time
 from operator import itemgetter
-from sklearn.preprocessing import LabelEncoder
-import atexit
 from subprocess import Popen, PIPE
-import os.path
+
+import cv2
+import dlib
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import LatentDirichletAllocation as LDA
+from sklearn.mixture import GMM
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
+from sklearn.svm import SVC
+
 import cecbr_photos.photos.utils.aligndlib
 import cecbr_photos.photos.utils.openface
-
-from sklearn.pipeline import Pipeline
-from sklearn.mixture import GMM
-from sklearn.decomposition import LatentDirichletAllocation as LDA
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ np.set_printoptions(precision=2)
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
 luaDir = os.path.join(fileDir, '..', 'batch-represent')
-modelDir = os.path.join(fileDir, '..', 'models')
+modelDir = os.path.join(fileDir, '..', 'facemodels')
 dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
 
@@ -70,12 +68,12 @@ class FaceRecogniser(object):
     below allow a user to retrain the classifier and make predictions
     on detected faces"""
 
-    def __init__(self, classifier):
+    def __init__(self, classifier_path=None):
         self.net = cecbr_photos.photos.utils.openface.TorchNeuralNet(networkModel, imgDim=imgDim, cuda=cuda)
         self.align = cecbr_photos.photos.utils.openface.AlignDlib(dlibFacePredictor)
         self.neuralNetLock = threading.Lock()
         self.predictor = dlib.shape_predictor(dlibFacePredictor)
-        self.classifier_path = classifier
+        self.classifier_path = classifier_path
 
         logger.info("Opening classifier.pkl to load existing known faces db")
         if self.classifier_path is not None:
@@ -118,12 +116,12 @@ class FaceRecogniser(object):
             return None
         rep1 = self.getRep(img)  # Gets embedding representation of image
         logger.info("Embedding returned. Reshaping the image and flatting it out in a 1 dimension array.")
-        rep = rep1.reshape(1,
-                           -1)  # take the image and  reshape the image array to a single line instead of 2 dimensionals
+        # take the image and  reshape the image array to a single line instead of 2 dimensionals
+        rep = rep1.reshape(1, -1)
         start = time.time()
         logger.info("Submitting array for prediction.")
-        predictions = self.clf.predict_proba(
-            rep).ravel()  # Computes probabilities of possible outcomes for samples in classifier(clf).
+        # Computes probabilities of possible outcomes for samples in classifier(clf).
+        predictions = self.clf.predict_proba(rep).ravel()
         # logger.info("We need to dig here to know why the probability are not right.")
         maxI = np.argmax(predictions)
         person1 = self.le.inverse_transform(maxI)
@@ -238,9 +236,9 @@ class FaceRecogniser(object):
             logger.info(fname + " file is empty")
             embeddings = np.zeros((2, 150))  # creating an empty array since csv is empty
 
-        self.le = LabelEncoder().fit(
-            labels)  # LabelEncoder is a utility class to help normalize labels such that they contain only values between 0 and n_classes-1
+        # LabelEncoder is a utility class to help normalize labels such that they contain only values between 0 and n_classes-1
         # Fits labels to model
+        self.le = LabelEncoder().fit(labels)
         labelsNum = self.le.transform(labels)
         nClasses = len(self.le.classes_)
         logger.info("Training for {} classes.".format(nClasses))
@@ -252,8 +250,7 @@ class FaceRecogniser(object):
 
         if ldaDim > 0:
             clf_final = self.clf
-            self.clf = Pipeline([('lda', LDA(n_components=ldaDim)),
-                                 ('clf', clf_final)])
+            self.clf = Pipeline([('lda', LDA(n_components=ldaDim)), ('clf', clf_final)])
 
         self.clf.fit(embeddings, labelsNum)  # link embeddings to labels
 

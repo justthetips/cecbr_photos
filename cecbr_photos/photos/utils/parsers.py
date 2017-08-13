@@ -1,6 +1,8 @@
-import attr
 import datetime
 from time import strptime, mktime
+
+import attr
+
 from .web import Page, IndexAlbumParser, unquote, FavoriteAlbumParser
 
 ALBUM_TOKEN = "\\\"SessionIDList\\\":[]}}"

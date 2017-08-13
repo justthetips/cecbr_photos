@@ -16,19 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cv2
-import numpy as np
 import os
-import glob
-import dlib
-import sys
-import argparse
-from PIL import Image
-import math
-import datetime
 import threading
-import logging
-import cecbr_photos.photos.utils.ImageUtils
+
+import cv2
+import dlib
+import numpy as np
 
 
 class FaceDetector(object):
