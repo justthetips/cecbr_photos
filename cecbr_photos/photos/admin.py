@@ -1,4 +1,5 @@
 from django.contrib import admin
+import django.utils.timezone
 from .models import CampUser, Season, Album, Photo
 import json
 
@@ -49,6 +50,7 @@ def analyze_album(modeladmin, request, queryset):
             photo.analyze_photo()
 
         album.analyzed = True
+        album.analyzed_date = django.utils.timezone.now()
         album.save()
 
 def analyze_photo(modeladmin, request, queryset):
@@ -69,6 +71,7 @@ class MyAlbumAdmin(admin.ModelAdmin):
     model = Album
     list_display = ('name', 'season', 'count', 'date', 'processed', 'analyzed')
     actions = [handle_album, analyze_album]
+    search_fields = ('name', 'id')
 
 @admin.register(Photo)
 class MyPhotoAdmin(admin.ModelAdmin):
@@ -76,3 +79,4 @@ class MyPhotoAdmin(admin.ModelAdmin):
     list_display = ('id', 'album', 'analyzed', 'found', 'analyzed_date', 'found_date', 'downloaded' )
     actions = [analyze_photo]
     list_filter = ('album',)
+    search_fields = ('id','album')
